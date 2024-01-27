@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\ExpenseRequest;
 use App\Models\Expense;
 use App\Http\Controllers\Api\ApiController;
+use Illuminate\Support\Facades\Redis;
 
 class ExpenseController extends ApiController
 {
@@ -25,12 +26,17 @@ class ExpenseController extends ApiController
         $expense['sum'] = $request->sum;
         $expense['comment'] = $request->comment;
         $expense = Expense::create($request->validated());
+        $expense = Redis::set('expense:'.$expense->id, $expense);
         return $this->respondSuccessCreate($expense);
     }
 
     public function show($id)
-    {
-        $expense = Expense::find($id);
+    { 
+        $expense = Redis::get('expense:'.$id);
+        if(!$expense) {
+           $expense = Expense::find($id);  
+        }
+       
         if($expense) {
             return $this->respondSuccess($expense);
          }
@@ -41,13 +47,18 @@ class ExpenseController extends ApiController
 
     public function update(ExpenseRequest $request, $id)
     {
-        $expense = Expense::find($id);
+        $expense = Redis::get('expense:'.$id);
+        
+        if(!$expense) {
+           $expense = Expense::find($id);  
+        }
         if($expense) {
            $expense->date = $request->date;
            $expense->sum = $request->sum;
            $expense->comment = $request->comment;
-
+        Redis::del('expense:'.$id);
         $expense->save();
+        Redis::set('expense:'.$id, $expense);
        return $this->respondSuccessUpdate($expense);
         }
        else {
@@ -60,6 +71,7 @@ class ExpenseController extends ApiController
         $expense = Expense::find($id);
         if($expense) {
         $expense->delete();
+        Redis::del('expense:'.$id);
        return $this->respondSuccessDelete($expense);
         }
        else {
