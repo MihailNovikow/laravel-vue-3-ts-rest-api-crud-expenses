@@ -16,3 +16,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+Route::post("/message", function (Request $request) {
+    $message = $_POST['message'];
+    $mqService = new \App\Services\RabbitMQService();
+    $mqService->publish($message);
+    return view('rabbitmq');
+});
